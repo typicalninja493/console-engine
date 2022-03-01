@@ -1,0 +1,26 @@
+{
+  "name": "console-engine",
+  "version": "1.0.0",
+  "description": "A Game Engine to create games in the console easily",
+  "main": "dist/index.js",
+  "scripts": {},
+  "keywords": [
+    "games",
+    "cli",
+    "console",
+    "video-games"
+  ],
+  "author": "typicalninja493",
+  "license": "MIT",
+  "dependencies": {
+    "common-tags": "^1.8.2",
+    "framesync": "^6.1.0",
+    "log-update": "^4.0.0",
+    "micromatch": "^4.0.4"
+  },
+  "devDependencies": {
+    "@types/common-tags": "^1.8.1",
+    "@types/micromatch": "^4.0.2",
+    "@types/node": "^17.0.21"
+  }
+}
