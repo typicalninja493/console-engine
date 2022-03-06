@@ -13,11 +13,14 @@
     "console-engine": "./bin/index.js"
   },
   "dependencies": {
-    "@types/yargs": "^17.0.9",
+    "ansi-colors": "^4.1.1",
+    "cli-progress": "^3.10.0",
     "webpack": "^5.70.0",
     "yargs": "^17.3.1"
   },
   "devDependencies": {
-    "@types/node": "^17.0.21"
+    "@types/cli-progress": "^3.9.2",
+    "@types/node": "^17.0.21",
+    "@types/yargs": "^17.0.9"
   }
 }
