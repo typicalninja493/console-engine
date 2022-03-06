@@ -2,21 +2,21 @@
 import logUpdate from 'log-update';
 import readline from "readline";
 import { EventEmitter } from 'events';
-import { EngineOptions, defaultSize, defaultOptions, Pixel } from './utils/constants';
+import { EngineOptions, defaultSize, defaultOptions, Pixel, state } from './utils/constants';
 import sync, { cancelSync, Process } from 'framesync';
 import KeyBindManager from './keyBinds';
 
 class GameEngine extends EventEmitter {
 	name: string;
 	screen: Pixel[][];
-	renderer: { renders: number; render: Process | null; fps: number; startTime: number };
+	renderer: { renders: number; render: Process | null; fps: number; startTime: number; state: string; idleTimeout: NodeJS.Timeout | null   };
 	options: EngineOptions;
 	readline: readline.Interface | null;
 	console_: logUpdate.LogUpdate;
 	keyBindManager: KeyBindManager;
 	constructor(gameName: string, options: EngineOptions = {}) {
 		super();
-		this.name = gameName;
+		this.name = gameName || `powered by console-engine`;
 		this.screen = [[]];
 		this.options = Object.assign({}, options, defaultOptions);
 		this.renderer = {
@@ -24,12 +24,19 @@ class GameEngine extends EventEmitter {
 			render: null,
 			fps: 0,
 			startTime: 0,
+			state: state.idle,
+			idleTimeout: null
 		}
 		this.readline = null;
 		this.console_ = logUpdate.create(process.stdout, {
-			showCursor: this.options.allowInput,
+			showCursor: false,
 		});
 		this.keyBindManager = new KeyBindManager(this);
+		this._createEmptyScreen(defaultSize.x, defaultSize.y);
+		// set the title
+		process.stdout.write(
+			String.fromCharCode(27) + "]0;" + this.name + String.fromCharCode(7)
+		);
 	}
 	/**
 	 * Manually render a frame to the console
@@ -40,13 +47,15 @@ class GameEngine extends EventEmitter {
 		this.console_(newScreen);
 		return true;
 	}
+	debug(...args: string[]) {
+		if(this.options.debug) this.options.debug(...args);
+	}
 	/**
 	 * Start a loop that will render frames per every second
 	 */
 	async startRenderLoop() {
 		if(this.renderer.render) throw new Error('RenderLoop is already running');
-		// create a empty screen with all values fille
-		this._createEmptyScreen(defaultSize.x, defaultSize.y);
+		this.restartRenderTimer()
 		// prerequisites
 		this.enableDefaults();
 		// clear the console
@@ -58,6 +67,7 @@ class GameEngine extends EventEmitter {
 			void render()
 			// calculate the fps
 			this.renderer.fps = Math.round(1000 / delta);
+			this.emit('render', { delta, renders: this.renderer.renders, fps: this.renderer.fps });
 		}, true);
 	}
 	/**
@@ -65,13 +75,32 @@ class GameEngine extends EventEmitter {
 	 * @returns 
 	 */
 	stopRenderLoop() {
-		if(!this.renderer.render) throw new Error('Render Loop has already ended')
+		if(!this.renderer.render) throw new Error('Render Loop has already ended');
+		this.debug(`Stopping Render Loop`);
 		cancelSync.render(this.renderer.render)
 		this.renderer.render = null;
 		return this;
 	}
+	private restartRenderTimer() {
+		if(this.renderer.idleTimeout) clearTimeout(this.renderer.idleTimeout);
+		this.debug(`Restarted Idle Render Timeout`)
+		if(this.renderer.state === state.idle) {
+			this.emit('active');
+			this.debug(`Render Active again`)
+			this.renderer.state = state.running;
+			this.startRenderLoop()
+		}
+		this.renderer.idleTimeout = setTimeout(() => {
+			if(this.renderer.render) {
+				this.stopRenderLoop();
+				this.renderer.state = state.idle;
+				this.emit('idle');
+				this.debug('Render idling')
+			}
+		}, this.options.idleTimeout);
+	}
 	private enableDefaults() {
-		if(this.options.allowInput) this.enableInput();
+		process.stdout.on('resize', () => this.emit('resize'));
 	}
 	private _createEmptyScreen(xCoord: number, yCoord: number) {
 		const newScreen: { x: number; y: number; value: string }[][] = [];
@@ -90,6 +119,7 @@ class GameEngine extends EventEmitter {
 		y = (y - 1) <= -1 ? 0 : y - 1;
 		if(!this.screen[x] || !this.screen[x][y]) throw new Error(`Invalid coordinates (x: ${x}, y: ${y}, ${this.screen[x] ? 'No Row' : 'No Column'})`);
 		this.screen[x][y].value = value;
+		this.restartRenderTimer();
 		return this;
 	}
 	updateBulkScreen(newScreen: Pixel[][]) {
@@ -108,20 +138,11 @@ class GameEngine extends EventEmitter {
 		this.screen = newScreen;
 		return this;
 	}
-	private enableInput() {
-		if(this.readline) throw new Error(`Input already enabled`)
-		this.readline = readline.createInterface({
-			input: process.stdin,
-			output: process.stdout
-		});
-
-		this.readline.on('line', (input) => {
-			this.emit('textInput', input);
-		})
-	}
 	reset() {
-		this._createEmptyScreen(defaultSize.x, defaultSize.y);
-		return this;
+		return new Promise((resolve, reject) => {
+			this._createEmptyScreen(defaultSize.x, defaultSize.y);
+			return resolve(this);
+		})
 	}
 	
 }

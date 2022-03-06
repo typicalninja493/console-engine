@@ -1,11 +1,15 @@
-const { AnimationUtils, Constants, GameEngine } = require("../dist/index");
+const { AnimationUtils, Constants, GameEngine } = require("../packages/core/dist/index");
+const boxen = require('boxen');
+const { stripIndents } = require("common-tags");
+const c = require('chalk');
+const { defaultSize } = require("../packages/core/dist/src/utils/constants");
 
 const game = new GameEngine("Snek");
 const animationUtils = new AnimationUtils(game);
 
 const DeathWalls = {
-	x: [1, Constants.defaultSize.x],
-	y: [2, Constants.defaultSize.y]
+	x: [7, Constants.defaultSize.x],
+	y: [1, Constants.defaultSize.y]
 }
 
 let snakeTail = []
@@ -14,18 +18,45 @@ let lastY = Constants.FLAGS.coordinates.center.y
 let currentProgress = 0;
 let removedTails = []
 let food = []
-
-game.startRenderLoop()
-// starting position
-game.create(Constants.FLAGS.coordinates.center.x, Constants.FLAGS.coordinates.center.y, '▲');
-
-animationUtils.animateFrom(Constants.defaultSize.x, 'x', '-');
-animationUtils.animateFrom(0, 'x', '-');
-animationUtils.animateFrom(1, 'y', '|');
-animationUtils.animateFrom(Constants.defaultSize.y, 'y', '|');
-
 let currentDirection = 'UP';
 
+
+void game.startRenderLoop()
+
+
+function drawScreenBorder() {
+animationUtils.animateFrom(Constants.defaultSize.x, 'x',  c.red('-'));
+animationUtils.animateFrom(0, 'x', '-');
+animationUtils.animateFrom(1, 'y', c.red('|'));
+animationUtils.animateFrom(Constants.defaultSize.y, 'y', c.red('|'));
+animationUtils.animateFrom(7, 'x', '-');
+}
+
+function drawScoreBoard() {
+	animationUtils.drawLineByLine(boxen(stripIndents
+		`
+		Score ${currentProgress}
+		`
+		, {padding: 1, margin: 2, borderStyle: 'round'}), {
+		x: 1,
+		y: 2
+	}).catch(() => null)
+}
+
+function drawFps() {
+	animationUtils.drawLineByLine(boxen(stripIndents
+		`
+		Fps: ${game.renderer.fps <= 25 ? c.red(game.renderer.fps) : game.renderer.fps < 50 ? c.yellow(game.renderer.fps) : c.green(game.renderer.fps)}
+		`
+		, {padding: 1, margin: 2, borderStyle: 'round'}), {
+		x: 1,
+		y: defaultSize.y - 17
+	}).catch(() => null)
+}
+
+drawScoreBoard()
+drawScreenBorder();
+drawFps();
 
 const foodSpawn = setInterval(() => {
 	// no more than 2 food items on the screen at a time
@@ -37,11 +68,11 @@ const foodSpawn = setInterval(() => {
 	if(food.some(item => item.x === foodItem.x && item.y === foodItem.y)) return;
 
 	if(lastX === foodItem.x && lastY === foodItem.y) return;
-	if(DeathWalls.x.includes(foodItem.x) || DeathWalls.y.includes(foodItem.y)) return;
-	if(snakeTail.some(tail => tail.x === foodItem.x && tail.y === foodItem.y)) return;
+//	if(DeathWalls.x.some(x => (foodItem.x <= x || foodItem.x >= x)) || DeathWalls.y.some(y => (foodItem.y <= y || foodItem.y >= y))) return;
+	//if(snakeTail.some(tail => tail.x === foodItem.x && tail.y === foodItem.y)) return;
 
 	food.push(foodItem);
-	game.create(foodItem.x, foodItem.y, '●');
+	game.create(foodItem.x, foodItem.y, c.green('●'));
 }, 2000);
 
 
@@ -55,7 +86,7 @@ const MoveLogic = setInterval(async () => {
 			lastX = newX;
 			lastY = newY;
 			await checkDeath();
-			game.create(newX, newY, '▲');
+			game.create(newX, newY, c.yellow('▲'));
 			checkIfFood();
 			UpdateSnakeTail();
 		break;
@@ -64,7 +95,7 @@ const MoveLogic = setInterval(async () => {
 			const newX2 = lastX + 1;
 			const newY2 = lastY;
 			newMove(newX2, newY2);
-			game.create(newX2, newY2, '▼');
+			game.create(newX2, newY2, c.yellow('▼'));
 			lastX = newX2;
 			lastY = newY2;
 			await checkDeath();
@@ -76,7 +107,7 @@ const MoveLogic = setInterval(async () => {
 			const newX3 = lastX;
 			const newY3 = lastY - 1;
 			newMove(newX3, newY3);
-			game.create(newX3, newY3, '◄');
+			game.create(newX3, newY3, c.yellow('◄'));
 			lastX = newX3;
 			lastY = newY3;
 			await checkDeath();
@@ -88,7 +119,7 @@ const MoveLogic = setInterval(async () => {
 			const newX4 = lastX;
 			const newY4 = lastY + 1;
 			newMove(newX4, newY4);
-			game.create(newX4, newY4, '►');
+			game.create(newX4, newY4, c.yellow('►'));
 			lastX = newX4;
 			lastY = newY4;
 			await checkDeath();
@@ -96,7 +127,7 @@ const MoveLogic = setInterval(async () => {
 			UpdateSnakeTail()
 		break;
 	}
-}, 100)
+}, 200)
 
 
 const checkDeath = async () => {
@@ -106,15 +137,19 @@ const checkDeath = async () => {
 		DeathWalls.y.includes(currentLocation.y)
 	) {
 		console.clear();
-		game.reset();
 		clearInterval(MoveLogic)
 		clearInterval(foodSpawn)
+		await game.reset();
+		//drawScreenBorder();
 		try {
-			await animationUtils.drawLineByLine(`
-			|    You Died    |
-		`, {
-			x: Constants.FLAGS.coordinates.center.x,
-			y:	Constants.FLAGS.coordinates.center.y
+			await animationUtils.drawLineByLine(boxen(stripIndents`
+				You Died
+
+				Death: Death by smashing into a wall
+				Score: ${currentProgress}
+			`, {padding: 7, margin: 15, borderStyle: 'double'}), {
+			x: Constants.FLAGS.coordinates.center.x - 10,
+			y:	Constants.FLAGS.coordinates.center.y - 30
 		})
 		}
 		catch(err) {
@@ -127,13 +162,17 @@ const checkDeath = async () => {
 		console.clear()
 		clearInterval(foodSpawn)
 		clearInterval(MoveLogic)
-		game.reset()
+		await game.reset();
+		//drawScreenBorder();
 		try {
-			await animationUtils.drawLineByLine(`
-			|    You Died    |
-		`, {
-			x: Constants.FLAGS.coordinates.center.x,
-			y:	Constants.FLAGS.coordinates.center.y
+			await animationUtils.drawLineByLine(boxen(stripIndents`
+				You Died
+
+				Death: Bit your own tail
+				Score: ${currentProgress}
+			`, {padding: 7, margin: 20, borderStyle: 'double'}), {
+			x: Constants.FLAGS.coordinates.center.x - 10,
+			y:	Constants.FLAGS.coordinates.center.y - 30
 		})
 		}
 		catch(err) {
@@ -146,7 +185,7 @@ const checkDeath = async () => {
 
 
 
-function newMove (x, y) {
+function newMove () {
 	if(snakeTail.length >= currentProgress) {
 		const removed = snakeTail.shift()
 		if(removed) {
@@ -168,7 +207,7 @@ function newMove (x, y) {
 
 function UpdateSnakeTail () {
 	snakeTail.forEach(tail => {
-		game.create(tail.x, tail.y, '■');
+		game.create(tail.x, tail.y, c.cyanBright('■'));
 	});
 
 	removedTails.forEach(tail => {
@@ -179,6 +218,7 @@ function UpdateSnakeTail () {
 function checkIfFood() {
 	if(food.some(f => f.x === lastX && f.y === lastY)) {
 		currentProgress++;
+		drawScoreBoard();
 		food = food.filter(f => f.x !== lastX || f.y !== lastY)
 	}
 }
@@ -203,6 +243,9 @@ game.on('moveRight', () => {
 	currentDirection = 'RIGHT';
 });
 
+game.on('render', () => {
+	drawFps();
+})
 
 
 

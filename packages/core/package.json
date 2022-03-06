@@ -2,7 +2,7 @@
   "name": "console-engine",
   "version": "1.0.0",
   "description": "A Game Engine to create games in the console easily",
-  "main": "dist/index.js",
+  "main": "/index.js",
   "scripts": {},
   "keywords": [
     "games",
@@ -13,6 +13,8 @@
   "author": "typicalninja493",
   "license": "MIT",
   "dependencies": {
+    "boxen": "^5.1.2",
+    "chalk": "^4.1.2",
     "common-tags": "^1.8.2",
     "framesync": "^6.1.0",
     "log-update": "^4.0.0",

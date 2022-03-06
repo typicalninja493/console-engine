@@ -1,33 +1,33 @@
 // automatic terminal height and width detection
-//export const TERMINAL_HEIGHT = process.stdout.rows;
-//export const TERMINAL_WIDTH = process.stdout.columns;
+export const TERMINAL_HEIGHT = process.stdout.rows;
+export const TERMINAL_WIDTH = process.stdout.columns;
 
 // console.log(`Terminal height: ${TERMINAL_HEIGHT}, width: ${TERMINAL_WIDTH}`);
 
 export const defaultSize = {
 	/** Height */
-	x: 35,
+	x: Math.round(TERMINAL_HEIGHT - 10),
 	/** Width */
-	y: 100,
+	y: Math.round(TERMINAL_WIDTH - 5),
+}
+
+export const state = {
+	idle: 'IDLE',
+	running: 'RUNNING'
 }
 
 export const defaultOptions: EngineOptions = {
-	renderer: {
-		delay: 500,
-	},
-	allowInput: false,
 	clearOnStop: true,
+	idleTimeout: 10000
 }
 
 export interface EngineOptions {
-	renderer?: {
-		delay: number,
-	}
-	allowInput?: boolean
-	clearOnStop?: boolean
+	clearOnStop?: boolean;
+	idleTimeout?: number;
 	keyBinds?: {
 		[key: string]: string
-	}
+	};
+	debug?: (...args: string[]) => void;
 }
 
 export interface Pixel {

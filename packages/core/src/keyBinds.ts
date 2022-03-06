@@ -2,10 +2,11 @@ import { GameEngine } from "..";
 import readline from "readline";
 import micromatch from "micromatch";
 import keyBinds from "./Binds";
+import { EngineOptions } from "./utils/constants";
 
 class KeyBindManager {
 	game: GameEngine;
-	options: import("d:/coding/npm-pkgs/console-engine/src/utils/constants").EngineOptions;
+	options: EngineOptions;
 	binds: { [key: string]: string };
 	constructor(game: GameEngine) {
 		this.game = game;
@@ -21,7 +22,9 @@ class KeyBindManager {
 	private _attachEvents() {
 		process.stdin.on('keypress', (str, key) => {
 			if(key.ctrl && key.name === 'c') {
-				this.game.stopRenderLoop();
+				if(this.game.renderer.render) {
+					this.game.stopRenderLoop();
+				}
 				if(this.options.clearOnStop) {
 					console.clear()
 				}
@@ -30,10 +33,7 @@ class KeyBindManager {
 			const keyName = key.name;
 
 			const bind = this.binds[keyName];
-			if (bind) {
-				this.game.emit(bind, this.game, key);
-			}
-			else if(micromatch.isMatch(keyName, Object.keys(this.binds))) {
+			if(micromatch.isMatch(keyName, Object.keys(this.binds))) {
 				Object.keys(this.binds).forEach(key => {
 					if(micromatch.isMatch(keyName, key)) {
 						this.game.emit(this.binds[key], this.game, key);
